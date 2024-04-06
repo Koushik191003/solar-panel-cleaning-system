@@ -1,0 +1,55 @@
+import RPi.GPIO as GPIO
+import time
+import random
+import paho.mqtt.client as mqtt
+
+# Define GPIO pins for motor control
+motor_pin1 = 17
+motor_pin2 = 18
+
+# Initialize GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(motor_pin1, GPIO.OUT)
+GPIO.setup(motor_pin2, GPIO.OUT)
+
+# MQTT settings
+mqtt_broker = "broker.example.com"  # Replace with your MQTT broker address
+mqtt_topic = "solar_panel/clean"
+
+# MQTT client setup
+client = mqtt.Client("solar_panel_cleaner")
+client.connect(mqtt_broker, 1883)
+
+def clean_panel():
+    # Code to activate the cleaning mechanism
+    GPIO.output(motor_pin1, GPIO.HIGH)
+    GPIO.output(motor_pin2, GPIO.LOW)
+    time.sleep(2)  # Adjust time as needed for cleaning duration
+    GPIO.output(motor_pin1, GPIO.LOW)
+    GPIO.output(motor_pin2, GPIO.LOW)
+
+def on_message(client, userdata, message):
+    # Callback function when a message is received
+    msg = message.payload.decode("utf-8")
+    if msg == "clean":
+        clean_panel()
+
+client.on_message = on_message
+client.subscribe(mqtt_topic)
+
+try:
+    client.loop_start()
+    while True:
+        # Simulate sunlight intensity readings
+        sunlight_intensity = random.randint(0, 100)
+        
+        if sunlight_intensity < 50:  # Adjust threshold as needed
+            # Send MQTT message to clean the panel
+            client.publish(mqtt_topic, "clean")
+        
+        time.sleep(60)  # Check sunlight intensity every minute
+
+except KeyboardInterrupt:
+    GPIO.cleanup()
+    client.disconnect()
+    client.loop_stop()
